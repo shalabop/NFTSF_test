@@ -75,14 +75,6 @@ well-trained model. Similarly, the test example passes `--max_segments 5`
 to evaluate only a handful of test windows instead of the full held-out
 set.
 
-> This repo's example scripts were written and statically checked
-> (`python -m py_compile`) in an environment without network access to
-> install `torch`/`normflows`, so end-to-end execution has not been
-> verified live. Please run `run_train_example.sh` and
-> `run_test_example.sh` yourself after `pip install -r requirements.txt`
-> to confirm the pipeline runs end-to-end, and open an issue if anything
-> doesn't match this README.
-
 ## Metrics
 
 `nftsf/metrics.py` computes CRPS, MAE, RMSE (of the ensemble median), and
