@@ -13,6 +13,7 @@ Architecture is never chosen manually here — see nftsf/model_selector.py.
 import argparse
 import json
 import os
+import time
 from datetime import datetime
 
 import numpy as np
@@ -127,6 +128,7 @@ def main():
     batch_size = args.batch_size if 0 < args.batch_size < n_segments else n_segments
 
     loss_history, val_loss_history = [], []
+    _train_start = time.time()
     for epoch in tqdm(range(args.epochs), desc="Training"):
         perm = torch.randperm(n_segments, device=device)
         epoch_loss, n_batches = 0.0, 0
@@ -149,6 +151,28 @@ def main():
             val_loss = -model.log_prob(val_samples, val_context).mean().item()
         val_loss_history.append(val_loss)
 
+    _training_time_seconds = time.time() - _train_start
+    print(f"\nTotal training time: {_training_time_seconds:.1f} seconds "
+          f"({_training_time_seconds / 60:.1f} min)")
+
+    # Sampling benchmark: time n_samp_n samples from the first segment's context.
+    # Ported from the reference repo's train/NFTSF/train_nftsf.py::main().
+    _samp_n = 100
+    _samp_ctx = train_context[:1]  # (1, n_past)
+    _samp_rep = _samp_ctx.expand(_samp_n, -1)  # (n_samples, n_past)
+    if device.type == "cuda":
+        torch.cuda.synchronize()
+    _t0 = time.time()
+    with torch.no_grad():
+        model.sample(_samp_n, _samp_rep)
+    if device.type == "cuda":
+        torch.cuda.synchronize()
+    _sampling_time = time.time() - _t0
+    _time_per_sample = _sampling_time / _samp_n
+    print(f"Sampling benchmark ({_samp_n} samples): "
+          f"{_sampling_time * 1000:.1f}ms total  "
+          f"({_time_per_sample * 1000:.3f}ms/sample)")
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     model_path = os.path.join(args.output_dir, f"{args.model_name}_{timestamp}.pth")
     torch.save(model.state_dict(), model_path)
@@ -165,6 +189,10 @@ def main():
         "final_loss": loss_history[-1],
         "final_val_loss": val_loss_history[-1],
         "timestamp": timestamp,
+        "training_time_seconds": _training_time_seconds,
+        "sampling_benchmark_n_samples": _samp_n,
+        "sampling_benchmark_total_seconds": _sampling_time,
+        "sampling_time_per_sample_seconds": _time_per_sample,
     }
     config_path = os.path.join(args.output_dir, f"config_{timestamp}.json")
     with open(config_path, "w") as f:
