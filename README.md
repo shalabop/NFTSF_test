@@ -1,6 +1,5 @@
 # NFTSF minimal repo
-
-A minimal, paper-ready copy of the NFTSF (Normalizing Flow Time Series
+Minimal NFTSF (Normalizing Flow Time Series
 Forecasting) pipeline: one training example, one test/eval example, and a
 single unified codepath that automatically picks the encoder or
 non-encoder architecture based on context length. No sweep scripts, no
